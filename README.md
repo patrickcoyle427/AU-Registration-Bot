@@ -11,4 +11,5 @@ MY BOT HAS COME A LONG WAY
 
 I have included the original file as OLDAUregistrationbot to show how much I have learned while creating this.
 
+The only thing that isn't included is the token0 file. You will have to create your own in the bot folder if you would like to see this in action, as well as change any channels, categories and guilds to your own server. I have marked this wherever necessary.
 
