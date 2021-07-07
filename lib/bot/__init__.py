@@ -1,6 +1,6 @@
 from discord import Intents, Embed, File, DMChannel, Client
 from discord.ext.commands import Bot as BotBase
-from discord.ext.commands import CommandNotFound
+from discord.ext.commands import CommandNotFound, CommandOnCooldown
 from discord.ext.commands import Context
 
 from glob import glob
@@ -49,8 +49,13 @@ class Bot(BotBase):
         self.scorekeeper = None
         # User ID of the side event scorekeeper so they know when an event can start, this is set in on_ready()
 
-        self.giant_card_active = False
+        self.giantcard_active = False
         # if set to true, announcements for attack of the giant card will be active and registration can be taken
+
+        self.obeliskdeck_active = True
+        self.sliferdeck_active = True
+        self.speedduel_active = True
+        self.winamat_active = True
 
         self.announcement_timer = 300
         # Edit this to change registration annoucement frequency
@@ -58,11 +63,11 @@ class Bot(BotBase):
         self.event_category = None
         # Edit this to change where tournament text channels are created, set in on_ready()
     
-        self.target_channels = (855907986060083220,
-                                856229554585337916,
-                                859860618188947496,
-                                861317602894020618,
-                                861317718190981201)
+        self.target_channels = (859851969664778270,
+                                859852025869369364,
+                                859852221340844092,
+                                859852277195603988,
+                                859852092738109470)
         # IDs of the channels the bot will be active in
         
         self.giantcard = self.target_channels[0]
@@ -154,6 +159,10 @@ class Bot(BotBase):
 
             pass
 
+        if isinstance(exc, CommandOnCooldown):
+
+            await ctx.reply(f'That command is on cooldown. Try again in {exc.retry_after:,.2f} seconds.')
+
         elif hasattr(exec, 'original'):
 
             raise exc.original
@@ -169,11 +178,13 @@ class Bot(BotBase):
             while not self.cogs_ready.all_ready():
                 await asyncio.sleep(0.5)
 
-            self.guild = bot.get_guild(575100789735948322)
+            self.guild = bot.get_guild(853704416325533716)
+            # Set the server ID here
 
             self.scorekeeper = self.guild.get_member(450433098811703317)
+            # Set scorekeeper User ID here
 
-            self.event_category = self.get_channel(575100790461431815)
+            self.event_category = self.get_channel(853704417329152004)
             # Edit to change the category where events channels are created
 
             self.ready = True
@@ -222,17 +233,32 @@ class Bot(BotBase):
 
                 channel = self.get_channel(id=channel_id)
 
-                if channel_id == self.giantcard and self.giant_card_active == False:
+                if self.giantcard_active == True and channel_id == self.giantcard:
                 # Skips annoucing the how to register if the event has already started
 
-                    pass
+                    message = f'If you would like to register for the {event_text[channel_id]} side event, type **!register** and I will DM you with the details on how to do so!'
+                    await channel.send(message)
 
-                else:
+                if self.obeliskdeck_active == True and channel_id == self.obeliskdeck:
 
                     message = f'If you would like to register for the {event_text[channel_id]} side event, type **!register** and I will DM you with the details on how to do so!'
-
                     await channel.send(message)
-                
+
+                if self.sliferdeck_active == True and channel_id == self.sliferdeck:
+
+                    message = f'If you would like to register for the {event_text[channel_id]} side event, type **!register** and I will DM you with the details on how to do so!'
+                    await channel.send(message)
+
+                if self.speedduel_active == True and channel_id == self.speedduel:
+
+                    message = f'If you would like to register for the {event_text[channel_id]} side event, type **!register** and I will DM you with the details on how to do so!'
+                    await channel.send(message)
+
+                if self.winamat_active == True and channel_id == self.winamat:
+
+                    message = f'If you would like to register for the {event_text[channel_id]} side event, type **!register** and I will DM you with the details on how to do so!'
+                    await channel.send(message)
+
             await asyncio.sleep(self.announcement_timer)
             # Loop waits x seconds before sending the message again
 
@@ -451,6 +477,11 @@ class Bot(BotBase):
 
                 channel = await self.guild.create_text_channel(channel_name, category=self.event_category, position=0)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
+
+            elif count[0][0] == 4:
+
+                await self.scorekeeper.send('You have 4 players for a win a mat event. If you would like to start this event now, go to the win a mat event registration channel and type **!winamatgo**')
+                await self.scorekeeper.send('If you are wating for 8 players, no action is needed')
 
                 db.commit()
 
