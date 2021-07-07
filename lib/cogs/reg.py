@@ -52,7 +52,7 @@ class Reg(Cog):
             await ctx.reply('Registration for all events has been closed!')
 
     @command(name='count')
-    #@cooldown(1, 60, BucketType.user)
+    @cooldown(1, 60, BucketType.user)
     async def reg_num(self, ctx, event_type=''):
 
         # Tells the user how many players are registered for an event
@@ -158,7 +158,7 @@ class Reg(Cog):
 
                     await self.bot.scorekeeper.send('Cannot start the event because it is not active!')
 
-    @command(name='obeliskgo')
+    @command(name='obeliskdeckgo', aliases=['obeliskgo'])
     async def obelisk_start(self, ctx):
 
         if ctx.message.author.id in self.authorized_users:
