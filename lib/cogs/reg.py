@@ -3,6 +3,7 @@ from random import choice, randint
 from discord import Member
 from discord.ext.commands import Cog, BucketType
 from discord.ext.commands import command, cooldown 
+from discord.utils import get
 
 from datetime import datetime, timezone
 
@@ -13,9 +14,23 @@ class Reg(Cog):
     def __init__(self, bot):
 
         self.bot = bot
-        self.authorized_users = (450433098811703317, 505180557165068298)
+        self.authorized_users = (450433098811703317, 505180557165068298, 171871625052946433)
         # User IDs of anyone who has access to some of the registration commands.
-        # The only commands that users who are not in this list can use are !register and !count
+        # Add discord User IDs here to grant access
+        # The only commands that users who are not in this list can use are !count and !register
+
+    @command(name='clearreports')
+    async def clear_all_reports(self, ctx):
+
+        # Clears out all reports from the previous round to let players report again.
+
+        if ctx.message.author.id in self.authorized_users:
+
+            self.bot.reports.clear()
+
+            await ctx.reply(f'Round {self.bot.me_round_count} reports have been cleared!')
+
+            self.bot.me_round_count += 1
 
     @command(name='close')
     async def close_event(self, ctx, event_type=''):
@@ -114,7 +129,9 @@ class Reg(Cog):
 
             if counted[0][0] == 0:
 
-               await self.bot.scorekeeper.send('There are 0 players registered for the Giant Card event. Event can not be started.')
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.sk.send('There are 0 players registered for the Giant Card event. Event can not be started.')
 
             else:
 
@@ -148,15 +165,19 @@ class Reg(Cog):
 
                     db.commit()
 
-                    await self.bot.scorekeeper.send(f'Here is the list of players for Attack of the Giant Card. The role for the event is @{event_role} Please check to make sure they all have paid.')
-                    await self.bot.scorekeeper.send(dm_to_send)
+                    for sk in self.bot.pe_scorekeeper:
+
+                        await self.bot.sk.send(f'Here is the list of players for Attack of the Giant Card. The role for the event is @{event_role} Please check to make sure they all have paid.')
+                        await self.bot.sk.send(dm_to_send)
 
                     channel = await self.bot.guild.create_text_channel(channel_name, category=self.bot.event_category, position=0)
                     await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
 
                 else:
 
-                    await self.bot.scorekeeper.send('Cannot start the event because it is not active!')
+                    for sk in self.bot.pe_scorekeeper:
+
+                        await self.bot.sk.send('Cannot start the event because it is not active!')
 
     @command(name='obeliskdeckgo', aliases=['obeliskgo'])
     async def obelisk_start(self, ctx):
@@ -167,7 +188,9 @@ class Reg(Cog):
 
             if counted[0][0] == 0:
 
-               await self.bot.scorekeeper.send('There are 0 players registered for the Obelisk Structure Deck event. Event can not be started.')
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send('There are 0 players registered for the Obelisk Structure Deck event. Event can not be started.')
 
             else:
 
@@ -199,8 +222,10 @@ class Reg(Cog):
 
                 db.commit()
 
-                await self.bot.scorekeeper.send(f'Here is the list of players for the Obelisk Strucutre Deck Event. The role for the event is @{event_role} Please check to make sure they all have paid.')
-                await self.bot.scorekeeper.send(dm_to_send)
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send(f'Here is the list of players for the Obelisk Strucutre Deck Event. The role for the event is @{event_role} Please check to make sure they all have paid.')
+                    await self.bot.sk.send(dm_to_send)
 
                 channel = await self.bot.guild.create_text_channel(channel_name, category=self.bot.event_category, position=0)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
@@ -320,8 +345,68 @@ class Reg(Cog):
             
                 self.bot.reg_from[ctx.message.author.id] = ctx.message.channel.id
 
+    @command(name='report')
+    @cooldown(1, 60, BucketType.user)
+    async def report_result(self, ctx, result='', *, table=''):
 
-    @command(name='sliferdeckgo')
+        accept_results = ('win', 'won', 'lost', 'lose', 'draw', 'drew')
+
+        name = ctx.author.nick
+
+        userid = ctx.message.author.id
+
+        result = result.lower()
+
+        get_report = self.bot.reports.get(userid, 'x')
+
+        if get_report == 'x':
+
+            if result in accept_results and table != '':
+
+                if result == accept_results[0] or result == accept_results[1]:
+
+                    await ctx.reply('Your result has been accepted! Thank you!')
+                    await self.bot.me_scorekeeper.send(f'{name} won at table {table} this round!')
+
+                    self.bot.reports[userid] = f'win at table {table} for round {self.bot.me_round_count}'
+
+                elif result == accept_results[2] or result == accept_results[3]:
+
+                    await ctx.reply('Your result has been accepted! Thank you!')
+                    await self.bot.me_scorekeeper.send(f'{name} lost at table {table} this round!')
+
+                    self.bot.reports[userid] = f'loss at table {table} for round {self.bot.me_round_count}'
+
+                elif result == accept_results[4] or result == accept_results[5]:
+
+                    await ctx.reply('Your result has been accepted! Thank you!')
+                    await self.bot.me_scorekeeper.send(f'{name} drew at table {table} this round!')
+
+                    self.bot.reports[userid] = f'draw at table {table} for round {self.bot.me_round_count}'
+
+            else:
+
+                await ctx.reply(f'That is not an accepted result. Please type either:\nwin\nlose\ndraw\nYou must also include the table number! See the FAQ for correct usage! Please message <@{self.bot.me_scorekeeper} if you have a problem!')
+
+        else:
+
+            await ctx.reply(f'You have already reported a {get_report}. If this is not correct, please DM @<{self.bot.me_scorekeeper}>')
+
+    @command(name='rolecall')
+    async def roles_for_all(self, ctx):
+
+        role = get(self.bot.guild.roles, id=853704416325533717)
+
+        if ctx.message.author.id in self.authorized_users:
+
+            for mem in self.bot.guild.members:
+
+                if len(mem.roles) < 2:
+
+                    await mem.add_roles(role)
+        
+
+    @command(name='sliferdeckgo', aliases=['slifergo'])
     async def slifer_start(self, ctx):
 
         if ctx.message.author.id in self.authorized_users:
@@ -330,7 +415,9 @@ class Reg(Cog):
 
             if counted[0][0] == 0:
 
-               await self.bot.scorekeeper.send('There are 0 players registered for the Slifer Structure Deck event. Event can not be started.')
+                for sk in self.bot.pe_scorekeeper:
+
+                   await self.bot.sk.send('There are 0 players registered for the Slifer Structure Deck event. Event can not be started.')
 
             else:
 
@@ -362,8 +449,10 @@ class Reg(Cog):
 
                 db.commit()
 
-                await self.bot.scorekeeper.send(f'Here is the list of players for the Slifer Strucutre Deck Event. The role for the event is @{event_role}. Please check to make sure they all have paid.')
-                await self.bot.scorekeeper.send(dm_to_send)
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send(f'Here is the list of players for the Slifer Strucutre Deck Event. The role for the event is @{event_role}. Please check to make sure they all have paid.')
+                    await self.bot.sk.send(dm_to_send)
 
                 channel = await self.bot.guild.create_text_channel(channel_name, category=self.bot.event_category, position=0)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
@@ -377,7 +466,9 @@ class Reg(Cog):
 
             if counted[0][0] == 0:
 
-               await self.bot.scorekeeper.send('There are 0 players registered for the Speed Duel event. Event can not be started.')
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send('There are 0 players registered for the Speed Duel event. Event can not be started.')
 
             else:
 
@@ -409,8 +500,10 @@ class Reg(Cog):
 
                 db.commit()
 
-                await self.bot.scorekeeper.send(f'Here is the list of players for the Speed Duel Event. The role for the event is @{event_role}. Please check to make sure they all have paid.')
-                await self.bot.scorekeeper.send(dm_to_send)
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send(f'Here is the list of players for the Speed Duel Event. The role for the event is @{event_role}. Please check to make sure they all have paid.')
+                    await self.bot.sk.send(dm_to_send)
 
                 channel = await self.bot.guild.create_text_channel(channel_name, category=self.bot.event_category, position=0)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
@@ -424,7 +517,9 @@ class Reg(Cog):
 
             if counted[0][0] == 0:
 
-                await self.bot.scorekeeper.send('There are 0 players registered for the Win A Mat event. Event can not be started.')
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send('There are 0 players registered for the Win A Mat event. Event can not be started.')
 
             else:
 
@@ -456,8 +551,10 @@ class Reg(Cog):
 
                 db.commit()
 
-                await self.bot.scorekeeper.send(f'Here is the list of players for the Win A Mat Event. The role for the event is @{event_role} Please check to make sure they all have paid.')
-                await self.bot.scorekeeper.send(dm_to_send)
+                for sk in self.bot.pe_scorekeeper:
+
+                    await self.bot.sk.send(f'Here is the list of players for the Win A Mat Event. The role for the event is @{event_role} Please check to make sure they all have paid.')
+                    await self.bot.sk.send(dm_to_send)
 
                 channel = await self.bot.guild.create_text_channel(channel_name, category=self.bot.event_category, position=0)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')

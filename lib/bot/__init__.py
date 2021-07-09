@@ -38,6 +38,7 @@ class Ready(object):
         return all ([getattr(self, cog) for cog in COGS])
 
 class Bot(BotBase):
+    
     def __init__(self):
 
         self.PREFIX = PREFIX
@@ -46,19 +47,26 @@ class Bot(BotBase):
         self.guild = None
         # Guild ID, this is set in on_ready
         self.scheduler = AsyncIOScheduler()
-        self.scorekeeper = None
-        # User ID of the side event scorekeeper so they know when an event can start, this is set in on_ready()
+
+        self.me_scorekeeper = None
+        # User ID of the main event scorekeeper, used for receiving main event results.
+        # This is set in on_ready
+        
+        self.pe_scorekeeper = None
+        # User ID of the side event scorekeeper so they know when an event can start.
+        # Tuple so you can have multiple public event scorekeepers
+        # this is set in on_ready()
 
         self.giantcard_active = False
         # if set to true, announcements for attack of the giant card will be active and registration can be taken
 
-        self.obeliskdeck_active = True
-        self.sliferdeck_active = True
-        self.speedduel_active = True
-        self.winamat_active = True
+        self.obeliskdeck_active = False
+        self.sliferdeck_active = False
+        self.speedduel_active = False
+        self.winamat_active = False
 
-        self.announcement_timer = 300
-        # Edit this to change registration annoucement frequency
+        self.announcement_timer = 420
+        # Edit this to change registration annoucement frequency, time is in seconds
 
         self.event_category = None
         # Edit this to change where tournament text channels are created, set in on_ready()
@@ -77,15 +85,16 @@ class Bot(BotBase):
         self.winamat = self.target_channels[4]
         # I set channel IDs from the target channel list to variables for cleaner code
 
-        #self.giant_card_start = datetime(2021, 7, 11, 13, 00, tzinfo=timezone.utc)
-
-        db.autosave(self.scheduler)
-        
-        super().__init__(command_prefix=PREFIX, owner_ids=OWNER_IDS, intents=Intents.all())
-
         self.reg_from = {}
-        # table to hold the user ID of a player, and the channel that the registered from so
+        # dict to hold the user ID of a player, and the channel that the registered from so
         # the bot knows what registration form to send them
+
+        self.reports = {}
+        # dict to hold the user ID and result of a player for a round. If they have a report already it won't let them report again.
+        # Use the !clearreports command to clear all previous round reports.
+
+        self.me_round_count = 1
+        # Counts the round number, updated when !clearreports is used
         
         self.obelisk_deck_event_id = 1
         self.slifer_deck_event_id = 1
@@ -93,13 +102,10 @@ class Bot(BotBase):
         self.win_a_mat_event_id = 1
         # increments the ID numbers for creating channels and assigning roles
 
-        self.giant_card_role = ''
-        self.obelisk_deck_roles = {}
-        self.slifer_deck_roles = {}
-        self.speed_duel_roles = {}
-        self.win_a_mat_roles = {}
-        # dicts for holding created roles. Key is event number
-
+        db.autosave(self.scheduler)
+        
+        super().__init__(command_prefix=PREFIX, owner_ids=OWNER_IDS, help_command=None, intents=Intents.all())
+        
     def setup(self):
 
         for cog in COGS:
@@ -181,11 +187,15 @@ class Bot(BotBase):
             self.guild = bot.get_guild(853704416325533716)
             # Set the server ID here
 
-            self.scorekeeper = self.guild.get_member(450433098811703317)
-            # Set scorekeeper User ID here
+            self.me_scorekeeper = self.guild.get_member(450433098811703317)
+            # Set main event scorekeeper's User ID here.
+
+            self.pe_scorekeeper = (self.guild.get_member(505180557165068298),
+                                   self.guild.get_member(171871625052946433))
+            # Set public events scorekeeper's User ID here.
 
             self.event_category = self.get_channel(853704417329152004)
-            # Edit to change the category where events channels are created
+            # Edit to change the category where public events channels are created.
 
             self.ready = True
 
@@ -297,6 +307,8 @@ class Bot(BotBase):
 
             if count[0][0] == 8:
 
+                # 8 is how many players are needed to start an event
+
                 players = db.records('SELECT * FROM obeliskdeck LIMIT 8')
 
                 event_players = [i[0] for i in players]
@@ -333,8 +345,13 @@ class Bot(BotBase):
 
             elif count[0][0] == 4:
 
-                await self.scorekeeper.send('You have 4 players for an obelisk structure event. If you would like to start this event now, go to the obelisk structure deck event registration channel and type **!obeliskgo**')
-                await self.scorekeeper.send('If you are wating for 8 players, no action is needed')
+                # You are able to play an event with 4, so there is an option to start with that number if it is an
+                # event with low attendance.
+
+                for sk in self.pe_scorekeeper:
+
+                    await self.sk.send('You have 4 players for an obelisk structure event. If you would like to start this event now, go to the obelisk structure deck event registration channel and type **!obeliskgo**')
+                    await self.sk.send('If you are wating for 8 players, no action is needed')
 
         elif player_event == self.sliferdeck:
 
@@ -382,8 +399,10 @@ class Bot(BotBase):
 
             elif count[0][0] == 4:
 
-                await self.scorekeeper.send('You have 4 players for a slifer structure event. If you would like to start this event now, go to the slifer structure deck event registration channel and type **!slifergo**')
-                await self.scorekeeper.send('If you are wating for 8 players, no action is needed')
+                for sk in self.pe_scorekeeper:
+
+                    await self.sk.send('You have 4 players for a slifer structure event. If you would like to start this event now, go to the slifer structure deck event registration channel and type **!slifergo**')
+                    await self.sk.send('If you are wating for 8 players, no action is needed')
 
 
         elif player_event == self.speedduel:
@@ -432,8 +451,10 @@ class Bot(BotBase):
 
             elif count[0][0] == 4:
 
-                await self.scorekeeper.send('You have 4 players for a speed duel event. If you would like to start this event now, go to the speed duel event registration channel and type **!speedduelgo**')
-                await self.scorekeeper.send('If you are wating for 8 players, no action is needed')
+                for sk in self.pe_scorekeeper:
+
+                    await self.sk.send('You have 4 players for a speed duel event. If you would like to start this event now, go to the speed duel event registration channel and type **!speedduelgo**')
+                    await self.sk.send('If you are wating for 8 players, no action is needed')
 
 
         elif player_event == self.winamat:
@@ -480,8 +501,10 @@ class Bot(BotBase):
 
             elif count[0][0] == 4:
 
-                await self.scorekeeper.send('You have 4 players for a win a mat event. If you would like to start this event now, go to the win a mat event registration channel and type **!winamatgo**')
-                await self.scorekeeper.send('If you are wating for 8 players, no action is needed')
+                for sk in self.pe_scorekeeper:
+
+                    await self.sk.send('You have 4 players for a win a mat event. If you would like to start this event now, go to the win a mat event registration channel and type **!winamatgo**')
+                    await self.sk.send('If you are wating for 8 players, no action is needed')
 
                 db.commit()
 
@@ -495,8 +518,10 @@ class Bot(BotBase):
 
         if event_can_start:
 
-                await self.scorekeeper.send(f'You have enough players to start a {event_name} event. The role for the event is @{event_role}')
-                await self.scorekeeper.send('Here is the list of players. Please check to make sure they all have paid')
-                await self.scorekeeper.send(dm_to_send)
+            for sk in self.pe_scorekeeper:
+
+                await self.sk.send(f'You have enough players to start a {event_name} event. The role for the event is @{event_role}')
+                await self.sk.send('Here is the list of players. Please check to make sure they all have paid')
+                await self.sk.send(dm_to_send)
 
 bot = Bot()
