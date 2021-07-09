@@ -21,9 +21,9 @@ There are also commands to open and close registration to control event flow.
   
   Only works in the specified registration channels. The specified registration channels are where annoucements on what event and how to register are made. When a user used the command, they will be DM'd by AuRegistrationBot with a link to a google sheet with information on how to register for that event. Once they are done, they can type !done to confirm and finish their registration. 
   
-### !report <result> <table#>
+### !report 'result' 'table#'
   
-  Sends a DM to the main event scorekeeper with the result of that player's round. Accepted results are: win, won, lose, lost, draw, drew.
+  Sends a DM from this bot to the main event scorekeeper with the result of that player's round. Accepted results are: win, won, lose, lost, draw, drew.
   
   Table# is the table that the player was at for that round.
   
