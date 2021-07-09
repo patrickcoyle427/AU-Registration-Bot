@@ -51,7 +51,7 @@ Drops the specified user from an event table.
 
 ### !giantcardgo
 
-Starts the Attack of the Giant Card event. Closes registration for the event, DM's a list of all users who registered to the scorekeeper so that they can be entered into KTS. Creates the @AttackOftheGiantCard role and assigns all registered users to that role. Creates a new channel for the event, then makes a post alerting all users with the newly created role that their event will start soon, and to let them know where all their event info will be.
+Starts the Attack of the Giant Card event. Closes registration for the event, DM's a list of all users who registered to the scorekeeper so that they can be entered into KTS. Creates the @AttackOftheGiantCard role and assigns all registered users to that role. Creates a new channel for the event, then makes a post alerting all users with the newly created role that their event will start soon, and to let them know where all their event info will be. This also closes registration for this event.
 
 There are 4 more commands that work the same way, !obeliskdeckgo, !sliferdeckgo, !speedduelgo, and !winamatgo
 
