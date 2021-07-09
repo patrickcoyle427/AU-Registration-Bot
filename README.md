@@ -3,9 +3,9 @@ A Discord bot written in python to help with registering players for Alternate U
 
 This bot DMs users a link to sign up and pay for the tournament they want to play in and once enough players are signed up it alerts the scorekeeper for the event that it can start, creates a channel, and a role for the event as well.
 
-This can be bipassed as well in case the user wants to start an event with less than 8 players.
+Events can also be started with less than 8 people if needed with commands.
 
-One of the events, Attack of the Giant Card, starts at a specific time. I have included commands for the scorekeeper to open and close registration so that it can start with any number of entrants.
+There are also commands to open and close registration to control event flow.
 
 # Commands
 
