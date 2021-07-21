@@ -1,27 +1,7 @@
-'''
-AURegistrationBot - Written by Patrick Coyle
-
-Bot to assist with registration for side events and for reporting results for the
-main event of the Konami Remote Duel YCS, an online yugioh tournament played over
-webcam, faciilated by Discord.
-
-This was written specifically for this tournament and as is only functions on
-the Alternate Universes RDYCS discord server it was written for. To use it
-on your own server, you will need to update any of the guild and user IDs for
-for your own server and users. I have labeled anything that needs to be changed
-to do this.
-
-List of commands can be found at:
-https://github.com/patrickcoyle427/AU-Registration-Bot/blob/main/README.md
-'''
-
-from discord import Intents, Embed, File, DMChannel, Client
+from discord import Intents, File, DMChannel, Client
 from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import CommandNotFound, CommandOnCooldown
 from discord.ext.commands import Context
-
-from glob import glob
-from datetime import datetime, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -32,7 +12,7 @@ import asyncio
 
 PREFIX = '!'
 OWNER_IDS = [450433098811703317]
-COGS = ['reg']
+COGS = ['sideevents', 'mainevent']
 # Finds and returns the name of all the cogs in the cog folder
 
 class Ready(object):
@@ -61,9 +41,10 @@ class Bot(BotBase):
         self.PREFIX = PREFIX
         self.ready = False
         self.cogs_ready = Ready()
+        self.scheduler = AsyncIOScheduler()
+
         self.guild = None
         # Guild ID, this is set in on_ready
-        self.scheduler = AsyncIOScheduler()
 
         self.me_scorekeeper = None
         # User ID of the main event scorekeeper, used for receiving main event results.
@@ -74,33 +55,53 @@ class Bot(BotBase):
         # Tuple so you can have multiple public event scorekeepers
         # this is set in on_ready()
 
-        self.giantcard_active = False
-        # if set to true, announcements for attack of the giant card will be active and registration can be taken
+        self.authorized_users = (450433098811703317,
+                                 505180557165068298,
+                                 171871625052946433)
+        # User IDs of anyone who has access to tournament administration commands in the SideEvents and MainEvent cogs
+        # Add discord User IDs here to grant access
+        # Only certain commands can be used by those who are not part of this list
 
+        self.mainevent_active = False
+        self.giantcard_active = False
         self.obeliskdeck_active = False
         self.sliferdeck_active = False
         self.speedduel_active = False
         self.winamat_active = False
+        # if any of these are set to true, players will be able to register for events and
+        # public event annoucmenets will be made.
+        # Set to False by default, can be set to true by using !open <event> or !openall
+        # The main event is only opened with the !openmain command.
 
-        self.announcement_timer = 420
+        self.announcement_timer = 900
         # Edit this to change registration annoucement frequency, time is in seconds
 
         self.event_category = None
-        # Edit this to change where tournament text channels are created, set in on_ready()
+        # Holds the category ID of where tournament text channels are created,
+        # This is set in on_ready()
+
+        self.events = ('giantcard', 'obeliskdeck', 'sliferdeck', 'speedduel', 'winamat')
+        # Tuple of public events that can be run, if you add any to this, make sure to add a target channel for that event as wellS
+
+        self.giantcard = 866883765032189972
+        self.obeliskdeck = 866883765032189972
+        self.sliferdeck = 866883765032189972
+        self.speedduel = 866883765032189972
+        self.winamat = 866883765032189972
+        # Set the channel IDs for the different side event types
     
-        self.target_channels = (859851969664778270,
-                                859852025869369364,
-                                859852221340844092,
-                                859852277195603988,
-                                859852092738109470)
-        # IDs of the channels the bot will be active in
+        self.target_channels = (self.giantcard,
+                                self.obeliskdeck,
+                                self.sliferdeck,
+                                self.speedduel,
+                                self.winamat)
+        # tuple of the channels for checking in if statements
         
         self.giantcard = self.target_channels[0]
         self.obeliskdeck = self.target_channels[1]
         self.sliferdeck = self.target_channels[2]
         self.speedduel = self.target_channels[3]
         self.winamat = self.target_channels[4]
-        # I set channel IDs from the target channel list to variables for cleaner code
 
         self.reg_from = {}
         # dict to hold the user ID of a player, and the channel that the registered from so
@@ -113,10 +114,10 @@ class Bot(BotBase):
         self.me_round_count = 1
         # Counts the round number, updated when !clearreports is used
         
-        self.obelisk_deck_event_id = 1
-        self.slifer_deck_event_id = 1
-        self.speed_duel_event_id = 1
-        self.win_a_mat_event_id = 1
+        self.obeliskdeck_event_id = 1
+        self.sliferdeck_event_id = 1
+        self.speedduel_event_id = 1
+        self.winamat_event_id = 1
         # increments the ID numbers for creating channels and assigning roles
 
         db.autosave(self.scheduler)
@@ -201,17 +202,17 @@ class Bot(BotBase):
             while not self.cogs_ready.all_ready():
                 await asyncio.sleep(0.5)
 
-            self.guild = bot.get_guild(853704416325533716)
+            self.guild = bot.get_guild(844072472797380608)
             # Set the server ID here
 
-            self.me_scorekeeper = self.guild.get_member(450433098811703317)
+            self.me_scorekeeper = self.guild.get_member(505180557165068298)
             # Set main event scorekeeper's User ID here.
 
-            self.pe_scorekeeper = (self.guild.get_member(505180557165068298),
-                                   self.guild.get_member(171871625052946433))
-            # Set public events scorekeeper's User ID here.
+            self.pe_scorekeeper = (self.guild.get_member(505180557165068298),)
+            # Set public events (AKA Side Events) scorekeepers' User ID here.
+            # Tuple is used in case there are multiple public events scorekeepers
 
-            self.event_category = self.get_channel(853704417329152004)
+            self.event_category = self.get_channel(844072472797380609)
             # Edit to change the category where public events channels are created.
 
             self.ready = True
@@ -246,8 +247,8 @@ class Bot(BotBase):
 
         event_text = {
             self.giantcard: 'Attack of the Giant Card',
-            self.obeliskdeck: 'Obelisk Strucutre Deck',
-            self.sliferdeck: 'Slifer Structure Deck',
+            self.obeliskdeck: 'Obelisk God Deck',
+            self.sliferdeck: 'Slifer God Deck',
             self.speedduel: 'Speed Duel',
             self.winamat: 'Win a Mat'
             }
@@ -317,7 +318,7 @@ class Bot(BotBase):
 
             reg_success = True
 
-            db.execute('REPLACE INTO obeliskdeck(UserID,EventNumber) VALUES(?,?)', user_id, self.obelisk_deck_event_id)
+            db.execute('REPLACE INTO obeliskdeck(UserID,EventNumber) VALUES(?,?)', user_id, self.obeliskdeck_event_id)
             db.commit()
 
             count = db.records("SELECT COUNT (*) FROM obeliskdeck")
@@ -330,17 +331,17 @@ class Bot(BotBase):
 
                 event_players = [i[0] for i in players]
 
-                event_role = f'ObeliskStructure{self.obelisk_deck_event_id}'
+                event_role = f'ObeliskGodDeck{self.obeliskdeck_event_id}'
 
-                channel_name = f'Obelisk Structure Event {self.obelisk_deck_event_id}'
+                channel_name = f'Obelisk God Deck Event {self.obeliskdeck_event_id}'
 
                 role = await self.guild.create_role(name=event_role, mentionable=True)
 
-                self.obelisk_deck_event_id += 1
+                self.obeliskdeck_event_id += 1
 
                 event_can_start = True
 
-                event_name = 'Obelisk Structure Deck'
+                event_name = 'Obelisk God Deck Deck'
 
                 for player in event_players:
 
@@ -356,6 +357,7 @@ class Bot(BotBase):
                     db.execute('DELETE FROM obeliskdeck where UserID = ?', player)
 
                 channel = await self.guild.create_text_channel(channel_name, category=self.event_category, position=0)
+                await channel.set_permissions(role, read_messages=True, send_messages=True)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
 
                 db.commit()
@@ -367,14 +369,14 @@ class Bot(BotBase):
 
                 for sk in self.pe_scorekeeper:
 
-                    await self.sk.send('You have 4 players for an obelisk structure event. If you would like to start this event now, go to the obelisk structure deck event registration channel and type **!obeliskgo**')
-                    await self.sk.send('If you are wating for 8 players, no action is needed')
+                    await sk.send('You have 4 players for an obelisk structure event. If you would like to start this event now, go to the obelisk structure deck event registration channel and type **!obeliskgo**')
+                    await sk.send('If you are wating for 8 players, no action is needed')
 
         elif player_event == self.sliferdeck:
 
             reg_success = True
 
-            db.execute('REPLACE INTO sliferdeck(UserID,EventNumber) VALUES(?,?)', user_id, self.slifer_deck_event_id)
+            db.execute('REPLACE INTO sliferdeck(UserID,EventNumber) VALUES(?,?)', user_id, self.sliferdeck_event_id)
             db.commit()
 
             count = db.records("SELECT COUNT (*) FROM sliferdeck")
@@ -385,17 +387,17 @@ class Bot(BotBase):
 
                 event_players = [i[0] for i in players]
 
-                event_role = f'SliferStructure{self.slifer_deck_event_id}'
+                event_role = f'SliferGodDeck{self.sliferdeck_event_id}'
 
-                channel_name = f'Slifer Structure Event {self.slifer_deck_event_id}'
+                channel_name = f'Slifer God Deck Event {self.sliferdeck_event_id}'
 
                 role = await self.guild.create_role(name=event_role, mentionable=True)
 
-                self.slifer_deck_event_id += 1
+                self.sliferdeck_event_id += 1
 
                 event_can_start = True
 
-                event_name = 'Slifer Structure Deck'
+                event_name = 'Slifer God Deck Deck'
 
                 for player in event_players:
 
@@ -410,6 +412,7 @@ class Bot(BotBase):
                     db.execute('DELETE FROM sliferdeck where UserID = ?', player)
 
                 channel = await self.guild.create_text_channel(channel_name, category=self.event_category, position=0)
+                await channel.set_permissions(role, read_messages=True, send_messages=True)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
 
                 db.commit()
@@ -418,15 +421,15 @@ class Bot(BotBase):
 
                 for sk in self.pe_scorekeeper:
 
-                    await self.sk.send('You have 4 players for a slifer structure event. If you would like to start this event now, go to the slifer structure deck event registration channel and type **!slifergo**')
-                    await self.sk.send('If you are wating for 8 players, no action is needed')
+                    await sk.send('You have 4 players for a slifer structure event. If you would like to start this event now, go to the slifer structure deck event registration channel and type **!slifergo**')
+                    await sk.send('If you are wating for 8 players, no action is needed')
 
 
         elif player_event == self.speedduel:
 
             reg_success = True
 
-            db.execute('REPLACE INTO speedduel(UserID,EventNumber) VALUES(?,?)', user_id, self.speed_duel_event_id)
+            db.execute('REPLACE INTO speedduel(UserID,EventNumber) VALUES(?,?)', user_id, self.speedduel_event_id)
             db.commit()
 
             count = db.records("SELECT COUNT (*) FROM speedduel")
@@ -437,13 +440,13 @@ class Bot(BotBase):
 
                 event_players = [i[0] for i in players]
 
-                event_role = f'SpeedDuel{self.speed_duel_event_id}'
+                event_role = f'SpeedDuel{self.speed_duelevent_id}'
 
-                channel_name = f'Speed Duel Event {self.speed_duel_event_id}'
+                channel_name = f'Speed Duel Event {self.speedduel_event_id}'
 
                 role = await self.guild.create_role(name=event_role, mentionable=True)
 
-                self.speed_duel_event_id += 1
+                self.speedduel_event_id += 1
 
                 event_can_start = True
 
@@ -462,6 +465,7 @@ class Bot(BotBase):
                     db.execute('DELETE FROM speedduel where UserID = ?', player)
 
                 channel = await self.guild.create_text_channel(channel_name, category=self.event_category, position=0)
+                await channel.set_permissions(role, read_messages=True, send_messages=True)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
 
                 db.commit()
@@ -470,15 +474,15 @@ class Bot(BotBase):
 
                 for sk in self.pe_scorekeeper:
 
-                    await self.sk.send('You have 4 players for a speed duel event. If you would like to start this event now, go to the speed duel event registration channel and type **!speedduelgo**')
-                    await self.sk.send('If you are wating for 8 players, no action is needed')
+                    await sk.send('You have 4 players for a speed duel event. If you would like to start this event now, go to the speed duel event registration channel and type **!speedduelgo**')
+                    await sk.send('If you are wating for 8 players, no action is needed')
 
 
         elif player_event == self.winamat:
 
             reg_success = True
 
-            db.execute('REPLACE INTO winamat(UserID,EventNumber) VALUES(?,?)', user_id, self.win_a_mat_event_id)
+            db.execute('REPLACE INTO winamat(UserID,EventNumber) VALUES(?,?)', user_id, self.winamat_event_id)
             db.commit()
 
             count = db.records("SELECT COUNT (*) FROM winamat")
@@ -489,13 +493,13 @@ class Bot(BotBase):
 
                 event_players = [i[0] for i in players]
 
-                event_role = f'WinAMat{self.win_a_mat_event_id}'
+                event_role = f'WinAMat{self.winamat_event_id}'
 
-                channel_name = f'Win A Mat Event {self.win_a_mat_event_id}'
+                channel_name = f'Win A Mat Event {self.winamat_event_id}'
 
                 role = await self.guild.create_role(name=event_role, mentionable=True)
 
-                self.win_a_mat_event_id += 1
+                self.winamat_event_id += 1
 
                 event_can_start = True
 
@@ -514,14 +518,15 @@ class Bot(BotBase):
                     db.execute('DELETE FROM winamat where UserID = ?', player)
 
                 channel = await self.guild.create_text_channel(channel_name, category=self.event_category, position=0)
+                await channel.set_permissions(role, read_messages=True, send_messages=True)
                 await channel.send(f'<@&{role.id}> your event is starting soon! All your pairings and results will be posted here! Good luck players!')
 
             elif count[0][0] == 4:
 
                 for sk in self.pe_scorekeeper:
 
-                    await self.sk.send('You have 4 players for a win a mat event. If you would like to start this event now, go to the win a mat event registration channel and type **!winamatgo**')
-                    await self.sk.send('If you are wating for 8 players, no action is needed')
+                    await sk.send('You have 4 players for a win a mat event. If you would like to start this event now, go to the win a mat event registration channel and type **!winamatgo**')
+                    await sk.send('If you are wating for 8 players, no action is needed')
 
                 db.commit()
 
@@ -537,8 +542,8 @@ class Bot(BotBase):
 
             for sk in self.pe_scorekeeper:
 
-                await self.sk.send(f'You have enough players to start a {event_name} event. The role for the event is @{event_role}')
-                await self.sk.send('Here is the list of players. Please check to make sure they all have paid')
-                await self.sk.send(dm_to_send)
+                await sk.send(f'You have enough players to start a {event_name} event. The role for the event is @{event_role}')
+                await sk.send('Here is the list of players. Please check to make sure they all have paid')
+                await sk.send(dm_to_send)
 
 bot = Bot()
