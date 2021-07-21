@@ -9,15 +9,17 @@ There are also commands to open and close registration to control event flow.
 
 ## VERSION 2.0 ##
 
--Removed the reg cog, its commands have been separated into two cogs, sideevents and mainevent.
+Removed the reg cog, its commands have been separated into two cogs, sideevents and mainevent.
 
--Added more helpful commands, such as !list, !add, !seteventnum, and !setroundnum
+Added more helpful commands, such as !list, !add, !seteventnum, and !setroundnum
 
-## Mainevent Cog Commands
+# COMMANDS
 
   If a command says "This command can only be used by Authorized Users", it is referring to the tuple 
   self.authorized_users in the bot's __init__.py file. These commands can only be used by users who's discord UserID
   is added to this tuple.
+
+## Mainevent Cog Commands
 
 ### !clearreports
 
