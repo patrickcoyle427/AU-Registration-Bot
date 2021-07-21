@@ -7,6 +7,9 @@ Events can also be started with less than 8 people if needed with commands.
 
 There are also commands to open and close registration to control event flow.
 
+Want to see the bot when it was in action? You can check out the discord server it was used on by checking
+https://discord.gg/RkU5fV2nS7 
+
 ## VERSION 2.0 ##
 
 Removed the reg cog, its commands have been separated into two cogs, sideevents and mainevent.
