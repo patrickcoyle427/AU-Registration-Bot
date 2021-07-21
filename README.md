@@ -10,6 +10,7 @@ There are also commands to open and close registration to control event flow.
 ## VERSION 2.0 ##
 
 -Removed the reg cog, its commands have been separated into two cogs, sidevents and mainevent.
+
 -Added more helpful commands, such as !list, !add, !seteventnum, and !setroundnum
 
 # Commands
