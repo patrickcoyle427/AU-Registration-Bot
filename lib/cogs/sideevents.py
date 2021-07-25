@@ -16,17 +16,27 @@ class SideEvents(Cog):
 
         # Adds a player to an event table, and goes thru the steps as if that player did the process themselves.
 
+        can_enter = {'giantcard': self.bot.giantcard,
+                     'obeliskdeck': self.bot.obeliskdeck,
+                     'sliferdeck': self.bot.sliferdeck,
+                     'speedduel': self.bot.speedduel,
+                     'self.winamat': self.bot.winamat
+                     }
+
         if ctx.message.author.id in self.bot.authorized_users:
 
             if event_type in self.bot.events:
 
                 to_add = member.id
 
-                add_into = exec(f'self.bot.{event_type}')
+                add_into = can_enter[event_type]
+
+                print(to_add)
+                print(add_into)
 
                 self.bot.reg_from[to_add] = add_into
 
-                self.bot.add_to_event_table(to_add)
+                await self.bot.add_to_event_table(to_add)
 
                 await ctx.reply(f'<@{to_add}> successfully added into the {event_type} event!')
 
@@ -181,7 +191,13 @@ class SideEvents(Cog):
 
                     to_send += f'<@{user_id}>\n'
 
-                await ctx.reply(f'The players currently registered are:\n{to_send}')
+                if to_send == '':
+
+                    await ctx.reply('There are no players registerd for that event!')
+
+                else:
+                    
+                    await ctx.reply(f'The players currently registered are:\n{to_send}')
 
             else:
 
@@ -394,7 +410,7 @@ class SideEvents(Cog):
                     await ctx.reply('Your event number is not a number! Please use a number greater than 0 and less than 100')
                     return
 
-                if len(event_num) == 0:
+                if len(num) == 0:
 
                     await ctx.reply('Please enter an updated event number')
 
@@ -406,13 +422,13 @@ class SideEvents(Cog):
 
                     await ctx.reply('You cannot change the Attack of the Giant Card event number!')
 
-                elif len(event_num) > 2:
+                elif len(num) > 2:
 
                     await ctx.reply('I seriously doubt you are running event number 100. Please enter a number greater than 0 and less than 100')
 
                 else:
 
-                    exec(f'self.bot.{event_type}_event_id = {event_num)}')
+                    exec(f'self.bot.{event_type}_event_id = {event_num}')
 
                     await ctx.reply(f'The {event_type} event\'s event ID number has been updated to {num}!')
 
@@ -491,13 +507,13 @@ class SideEvents(Cog):
 
             else:
 
-                event_role = f'SpeedDuel{self.bot.speed_duel_event_id}'
+                event_role = f'SpeedDuel{self.bot.speedduel_event_id}'
 
                 role = await self.bot.guild.create_role(name=event_role, mentionable=True)
 
-                channel_name = f'Speed Duel Event {self.bot.speed_duel_event_id}'
+                channel_name = f'Speed Duel Event {self.bot.speedduel_event_id}'
 
-                self.bot.speed_duel_event_id += 1
+                self.bot.speedduel_event_id += 1
 
                 dm_to_send = ''
 
@@ -511,7 +527,13 @@ class SideEvents(Cog):
 
                     to_give_role = self.bot.guild.get_member(player)
 
-                    await to_give_role.add_roles(role)
+                    try:
+
+                        await to_give_role.add_roles(role)
+
+                    except AttributeError:
+
+                        await ctx.reply(f'{player} is no longer in this server! You will have {len(event_players)-1} now for this event.')
 
                     self.bot.reg_from[player] = ''
 

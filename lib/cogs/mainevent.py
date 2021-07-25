@@ -99,6 +99,25 @@ class MainEvent(Cog):
 
         if self.bot.mainevent_active == True:
 
+            try:
+
+                table_num = int(table)
+
+                if table == '':
+
+                    await ctx.reply('Please enter a table number!')
+                    return
+
+                elif table_num > 3:
+
+                    await ctx.reply('Table number too high. Your table number is definitely less than 1000.')
+                    return
+
+            except ValueError:
+
+                await ctx.reply('That is not a table number! Please only enter a number between 1 and 100!')
+                return
+
             name = ctx.author.nick
             # Players are supposed to change their discord nickname to their real name for online events.
 
@@ -115,7 +134,7 @@ class MainEvent(Cog):
 
             if get_report == False:
 
-                if result in accept_results and table != '' and len(table) < 4:
+                if result in accept_results:
 
                     if result == accept_results[0] or result == accept_results[1]:
 
@@ -141,7 +160,8 @@ class MainEvent(Cog):
                 else:
 
                     await ctx.reply(f'That is not an accepted result. Please type either:\nwin\nlose\ndraw\nYou must also include the table number! See the FAQ for correct usage! Please message <@{self.bot.me_scorekeeper.id}> if you have a problem!')
-
+                    return
+                
             else:
 
                 await ctx.reply(f'You have already reported a {get_report}. If this is not correct, please DM <@{self.bot.me_scorekeeper.id}>')
@@ -185,15 +205,19 @@ class MainEvent(Cog):
                 await ctx.reply('Your round number is not a number! Please use a number greater than 0 and less than 100')
                 return
 
-            if len(event_num) == 0:
+            except NameError:
 
-                await ctx.reply('Please enter an updated round number')
+                await ctx.reply('Please enter an updated round number!')
+
+            if len(num) == 0:
+
+                await ctx.reply('Please enter an updated round number!')
 
             elif event_num == 0:
 
                 await ctx.reply('Round number cannot be 0! Please use a number greater than 0 and less than 100')
 
-            elif len(event_num) > 2:
+            elif len(num) > 2:
 
                 await ctx.reply('I seriously doubt you are on that round. Please enter a number greater than 0 and less than 100')
 

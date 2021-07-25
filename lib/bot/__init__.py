@@ -83,11 +83,11 @@ class Bot(BotBase):
         self.events = ('giantcard', 'obeliskdeck', 'sliferdeck', 'speedduel', 'winamat')
         # Tuple of public events that can be run, if you add any to this, make sure to add a target channel for that event as wellS
 
-        self.giantcard = 866883765032189972
-        self.obeliskdeck = 866883765032189972
-        self.sliferdeck = 866883765032189972
+        self.giantcard = 844072472797380611
+        self.obeliskdeck = 844072472797380611
+        self.sliferdeck = 844072472797380611
         self.speedduel = 866883765032189972
-        self.winamat = 866883765032189972
+        self.winamat = 844072472797380611
         # Set the channel IDs for the different side event types
     
         self.target_channels = (self.giantcard,
@@ -96,12 +96,6 @@ class Bot(BotBase):
                                 self.speedduel,
                                 self.winamat)
         # tuple of the channels for checking in if statements
-        
-        self.giantcard = self.target_channels[0]
-        self.obeliskdeck = self.target_channels[1]
-        self.sliferdeck = self.target_channels[2]
-        self.speedduel = self.target_channels[3]
-        self.winamat = self.target_channels[4]
 
         self.reg_from = {}
         # dict to hold the user ID of a player, and the channel that the registered from so
@@ -205,10 +199,10 @@ class Bot(BotBase):
             self.guild = bot.get_guild(844072472797380608)
             # Set the server ID here
 
-            self.me_scorekeeper = self.guild.get_member(505180557165068298)
+            self.me_scorekeeper = self.guild.get_member(450433098811703317)
             # Set main event scorekeeper's User ID here.
 
-            self.pe_scorekeeper = (self.guild.get_member(505180557165068298),)
+            self.pe_scorekeeper = (self.guild.get_member(450433098811703317),)
             # Set public events (AKA Side Events) scorekeepers' User ID here.
             # Tuple is used in case there are multiple public events scorekeepers
 
